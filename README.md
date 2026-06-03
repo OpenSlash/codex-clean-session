@@ -1,0 +1,97 @@
+# codex-clean-session
+
+Clean local Codex session transcripts that contain invalid encrypted reasoning data, such as `thinking_signature_invalid`, `invalid_encrypted_content`, `encrypted_content`, or `litellm_enc`.
+
+If Codex cannot resume a session, repeatedly fails after a previous tool call, or shows an error related to encrypted reasoning content, this utility removes the broken local transcript records while preserving the rest of the conversation.
+
+## Problem: Codex Session Resume Errors
+
+Some Codex sessions can become difficult or impossible to continue when the local session transcript contains invalid encrypted reasoning payloads. Common symptoms include errors like:
+
+- `thinking_signature_invalid`
+- `invalid_encrypted_content`
+- `invalid_request_error`
+- failures involving `encrypted_content`, `thinking_signature`, or `litellm_enc`
+
+These errors can appear when resuming an old Codex session, continuing a long conversation, or sending the next request after a failed model response. Restarting Codex may not help if the same bad records are still stored in the local `.jsonl` transcript.
+
+## Why This Happens
+
+Codex stores local session history under `~/.codex/sessions/...` as JSONL transcript files. Some records may include encrypted reasoning metadata or response items that are not valid for later replay. When Codex reloads the transcript, those stale or invalid records can be sent back into the conversation chain and cause the next request to fail.
+
+This project targets the local transcript problem. It does not decrypt or recover hidden reasoning content; it removes records that are known to trigger these resume failures.
+
+## Solution
+
+`codex-clean-session` finds a Codex session transcript by session id or file path, removes invalid encrypted reasoning records, validates the remaining JSONL, and writes a backup before editing.
+
+The tool removes:
+
+- `response_item` records where `payload.type == "reasoning"`
+- Any record containing known encrypted-content error markers:
+  - `encrypted_content`
+  - `litellm_enc`
+  - `thinking_signature`
+  - `invalid_encrypted_content`
+  - `invalid_request_error`
+
+It writes a backup before editing:
+
+```text
+~/.codex/session-cleanup-backups/...
+```
+
+After cleaning, restart Codex or reopen the session so the repaired transcript is loaded.
+
+## Project Structure
+
+```text
+bin/codex-clean-session      # executable wrapper
+src/codex_clean_session.py   # source code
+README.md
+LICENSE
+```
+
+## Usage
+
+Preview a cleanup:
+
+```bash
+./bin/codex-clean-session --dry-run 019e1c22-7398-77c2-8303-306bf490edcb
+```
+
+Clean by session id:
+
+```bash
+./bin/codex-clean-session 019e1c22-7398-77c2-8303-306bf490edcb
+```
+
+Clean by file path:
+
+```bash
+./bin/codex-clean-session ~/.codex/sessions/2026/05/12/rollout-....jsonl
+```
+
+Add an extra removal marker:
+
+```bash
+./bin/codex-clean-session --pattern "lite...6FvO" 019e1c22-7398-77c2-8303-306bf490edcb
+```
+
+## Install Locally
+
+```bash
+ln -sf "$PWD/bin/codex-clean-session" ~/.local/bin/codex-clean-session
+```
+
+Then run:
+
+```bash
+codex-clean-session --dry-run <session-id>
+```
+
+## Notes
+
+After cleaning a session, restart Codex or reopen/resume the session. A running Codex process may already have the old transcript loaded in memory.
+
+If the error still appears after cleaning and restarting, the request may be chained through a server-side `previous_response_id`. In that case, start a new session and carry over only visible context.
