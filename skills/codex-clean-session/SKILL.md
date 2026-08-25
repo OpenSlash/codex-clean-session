@@ -33,7 +33,7 @@ codex-clean-session --last --dry-run
 codex-clean-session --last
 ```
 
-This avoids the loop where the skill needs the agent, but the agent cannot start because the transcript is invalid.
+This avoids the loop where the skill needs the agent, but the agent cannot start because the transcript is invalid. If Codex prints a resume command with a session id, prefer `codex-clean-session <session-id>` because it is exact.
 
 If the Codex hook is installed and trusted, the user can also submit this directly in Codex:
 

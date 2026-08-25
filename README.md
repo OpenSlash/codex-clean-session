@@ -72,7 +72,7 @@ clean-session --dry-run
 clean-session
 ```
 
-Clean the most recently modified Codex session from an external terminal:
+Clean the newest Codex session from an external terminal:
 
 ```bash
 codex-clean-session --last --dry-run
@@ -189,5 +189,13 @@ If the error still appears after cleaning and restarting, the request may be cha
 If Codex cannot process any request because the broken transcript fails before the agent can run tools, use `--last` from a separate terminal window. This avoids the skill/agent loop entirely.
 
 The hook command `clean-session` is the best in-Codex escape hatch for that same failure mode because it runs before model submission. If the hook is not installed or trusted yet, use `codex-clean-session --last` externally.
+
+`--last` scans global Codex transcripts under `${CODEX_HOME:-~/.codex}/sessions`; it is not limited to the current project directory. It chooses the newest session by the rollout timestamp in the transcript filename. Use `--last-modified` only if you explicitly want the file with the newest filesystem modification time.
+
+If Codex prints `To continue this session, run codex resume <session-id>`, the most precise cleanup command is:
+
+```bash
+codex-clean-session <session-id>
+```
 
 `--all` scans active transcript files under `${CODEX_HOME:-~/.codex}/sessions`. Date filters use the `YYYY/MM/DD` path in the Codex session directory, falling back to file modification time for manually supplied layouts.

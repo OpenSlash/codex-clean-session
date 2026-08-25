@@ -7,6 +7,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import tempfile
 from datetime import date, datetime
@@ -19,6 +20,10 @@ DEFAULT_PATTERNS = (
     "thinking_signature",
     "invalid_encrypted_content",
     "invalid_request_error",
+)
+
+ROLLOUT_TIME_RE = re.compile(
+    r"rollout-(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})"
 )
 
 
@@ -72,11 +77,27 @@ def active_session_paths(home: Path) -> list[Path]:
     return sorted(paths)
 
 
-def last_session_path(home: Path) -> Path:
+def session_sort_time(path: Path, home: Path) -> datetime:
+    match = ROLLOUT_TIME_RE.search(path.name)
+    if match:
+        year, month, day, hour, minute, second = (int(part) for part in match.groups())
+        return datetime(year, month, day, hour, minute, second)
+
+    try:
+        rel = path.relative_to(home / "sessions")
+        year, month, day = rel.parts[:3]
+        return datetime(int(year), int(month), int(day))
+    except (ValueError, IndexError):
+        return datetime.fromtimestamp(path.stat().st_mtime)
+
+
+def last_session_path(home: Path, *, by_modified_time: bool = False) -> Path:
     paths = active_session_paths(home)
     if not paths:
         raise SystemExit(f"No active Codex session transcripts found under: {home / 'sessions'}")
-    return max(paths, key=lambda path: path.stat().st_mtime)
+    if by_modified_time:
+        return max(paths, key=lambda path: path.stat().st_mtime)
+    return max(paths, key=lambda path: session_sort_time(path, home))
 
 
 def parse_date(value: str) -> date:
@@ -310,6 +331,11 @@ def main() -> int:
     parser.add_argument(
         "--last",
         action="store_true",
+        help="Clean the newest Codex session transcript by rollout timestamp",
+    )
+    parser.add_argument(
+        "--last-modified",
+        action="store_true",
         help="Clean the most recently modified Codex session transcript",
     )
     parser.add_argument(
@@ -345,9 +371,9 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    modes = [bool(args.target), args.current, args.last, args.all]
+    modes = [bool(args.target), args.current, args.last, args.last_modified, args.all]
     if sum(modes) != 1:
-        parser.error("choose exactly one of target, --current, --last, or --all")
+        parser.error("choose exactly one of target, --current, --last, --last-modified, or --all")
     if (args.date or args.from_date or args.to_date) and not args.all:
         parser.error("--date, --from, and --to can only be used with --all")
     if args.from_date and args.to_date and args.from_date > args.to_date:
@@ -385,8 +411,8 @@ def main() -> int:
             print(f"remaining_pattern_records={summary['remaining_patterns']}")
         return 0
 
-    if args.last:
-        path = last_session_path(home)
+    if args.last or args.last_modified:
+        path = last_session_path(home, by_modified_time=args.last_modified)
     else:
         target = current_session_id() if args.current else args.target
         path = find_session(target, home)
