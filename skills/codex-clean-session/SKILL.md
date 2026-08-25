@@ -24,6 +24,17 @@ Use this skill when the user asks to clean, repair, or recover the current Codex
 
 4. Tell the user that Codex may need to be restarted or the session reopened because the running process may already have loaded the old transcript.
 
+## When the Current Session Cannot Run Tools
+
+If the user is already seeing `thinking_signature_invalid` before the agent can run commands, tell them to run this from a separate terminal, outside the broken Codex session:
+
+```bash
+codex-clean-session --last --dry-run
+codex-clean-session --last
+```
+
+This avoids the loop where the skill needs the agent, but the agent cannot start because the transcript is invalid.
+
 ## Cleaning Multiple Sessions
 
 If the user asks to scan every session, run a dry run first:

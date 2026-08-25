@@ -63,6 +63,13 @@ Clean the current Codex session from inside Codex:
 ./bin/codex-clean-session --current
 ```
 
+Clean the most recently modified Codex session from an external terminal:
+
+```bash
+codex-clean-session --last --dry-run
+codex-clean-session --last
+```
+
 Scan all Codex sessions:
 
 ```bash
@@ -146,5 +153,7 @@ After cleaning a session, restart Codex or reopen/resume the session. A running 
 If the error still appears after cleaning and restarting, the request may be chained through a server-side `previous_response_id`. In that case, start a new session and carry over only visible context.
 
 `--current` works only inside Codex sessions that expose `CODEX_SESSION_ID` or `CODEX_THREAD_ID`.
+
+If Codex cannot process any request because the broken transcript fails before the agent can run tools, use `--last` from a separate terminal window. This avoids the skill/agent loop entirely.
 
 `--all` scans active transcript files under `${CODEX_HOME:-~/.codex}/sessions`. Date filters use the `YYYY/MM/DD` path in the Codex session directory, falling back to file modification time for manually supplied layouts.

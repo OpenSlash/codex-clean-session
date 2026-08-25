@@ -72,6 +72,13 @@ def active_session_paths(home: Path) -> list[Path]:
     return sorted(paths)
 
 
+def last_session_path(home: Path) -> Path:
+    paths = active_session_paths(home)
+    if not paths:
+        raise SystemExit(f"No active Codex session transcripts found under: {home / 'sessions'}")
+    return max(paths, key=lambda path: path.stat().st_mtime)
+
+
 def parse_date(value: str) -> date:
     try:
         return date.fromisoformat(value)
@@ -301,6 +308,11 @@ def main() -> int:
         help="Clean the current Codex session using CODEX_SESSION_ID or CODEX_THREAD_ID",
     )
     parser.add_argument(
+        "--last",
+        action="store_true",
+        help="Clean the most recently modified Codex session transcript",
+    )
+    parser.add_argument(
         "--all",
         action="store_true",
         help="Scan and clean all active Codex session transcripts",
@@ -333,9 +345,9 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    modes = [bool(args.target), args.current, args.all]
+    modes = [bool(args.target), args.current, args.last, args.all]
     if sum(modes) != 1:
-        parser.error("choose exactly one of target, --current, or --all")
+        parser.error("choose exactly one of target, --current, --last, or --all")
     if (args.date or args.from_date or args.to_date) and not args.all:
         parser.error("--date, --from, and --to can only be used with --all")
     if args.from_date and args.to_date and args.from_date > args.to_date:
@@ -373,8 +385,11 @@ def main() -> int:
             print(f"remaining_pattern_records={summary['remaining_patterns']}")
         return 0
 
-    target = current_session_id() if args.current else args.target
-    path = find_session(target, home)
+    if args.last:
+        path = last_session_path(home)
+    else:
+        target = current_session_id() if args.current else args.target
+        path = find_session(target, home)
     result = clean_file(path, home, patterns, args.dry_run)
     print_result(path, result, args.dry_run)
     return 0
