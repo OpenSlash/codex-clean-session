@@ -185,7 +185,10 @@ def count_remaining(path: Path, patterns: tuple[str, ...], mode: str) -> int:
 def validate_jsonl(path: Path) -> bool:
     with path.open("r", encoding="utf-8") as src:
         for raw in src:
-            json.loads(raw)
+            try:
+                json.loads(raw)
+            except json.JSONDecodeError:
+                return False
     return True
 
 
