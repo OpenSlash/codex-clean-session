@@ -68,8 +68,8 @@ Clean the current Codex session from inside Codex:
 After installing the hook, clean the current session from the Codex prompt without invoking the agent:
 
 ```text
-/clean-session --dry-run
-/clean-session
+clean-session --dry-run
+clean-session
 ```
 
 Clean the most recently modified Codex session from an external terminal:
@@ -172,11 +172,11 @@ ${CODEX_HOME:-~/.codex}/hooks.json
 Restart Codex, run `/hooks`, and trust the installed hook. Then use:
 
 ```text
-/clean-session --dry-run
-/clean-session
+clean-session --dry-run
+clean-session
 ```
 
-The hook runs before the prompt is sent to the model. It can clean the current transcript even when a broken session would prevent the agent or skill from running.
+The hook runs before the prompt is sent to the model. It can clean the current transcript even when a broken session would prevent the agent or skill from running. Do not prefix the command with `/`; Codex handles unknown slash commands before hooks can see them.
 
 ## Notes
 
@@ -188,6 +188,6 @@ If the error still appears after cleaning and restarting, the request may be cha
 
 If Codex cannot process any request because the broken transcript fails before the agent can run tools, use `--last` from a separate terminal window. This avoids the skill/agent loop entirely.
 
-The hook command `/clean-session` is the best in-Codex escape hatch for that same failure mode because it runs before model submission. If the hook is not installed or trusted yet, use `codex-clean-session --last` externally.
+The hook command `clean-session` is the best in-Codex escape hatch for that same failure mode because it runs before model submission. If the hook is not installed or trusted yet, use `codex-clean-session --last` externally.
 
 `--all` scans active transcript files under `${CODEX_HOME:-~/.codex}/sessions`. Date filters use the `YYYY/MM/DD` path in the Codex session directory, falling back to file modification time for manually supplied layouts.

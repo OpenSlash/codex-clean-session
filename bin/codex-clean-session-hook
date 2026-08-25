@@ -20,7 +20,14 @@ from codex_clean_session import (  # noqa: E402
 )
 
 
-COMMANDS = {"/clean-session", "/codex-clean-session", "/clean-codex-session"}
+COMMANDS = {
+    "clean-session",
+    "codex-clean-session",
+    "clean-codex-session",
+    "/clean-session",
+    "/codex-clean-session",
+    "/clean-codex-session",
+}
 
 
 def block(reason: str) -> None:
@@ -37,7 +44,7 @@ def format_result(path: Path, result: dict, dry_run: bool) -> str:
         f"invalid_json_lines={result['invalid_json']}",
     ]
     if dry_run:
-        lines.append("Run /clean-session to clean this transcript.")
+        lines.append("Run clean-session to clean this transcript.")
     else:
         lines.append(f"backup={result['backup']}")
         lines.append("Restart Codex or resume the session so the repaired transcript is loaded.")
@@ -65,7 +72,7 @@ def main() -> int:
 
     args = parts[1:]
     if args in (["--help"], ["-h"]):
-        block("Usage: /clean-session [--dry-run]\nAliases: /codex-clean-session, /clean-codex-session")
+        block("Usage: clean-session [--dry-run]\nAliases: codex-clean-session, clean-codex-session")
         return 0
 
     dry_run = False
@@ -73,7 +80,7 @@ def main() -> int:
         if args in (["--dry-run"], ["-n"]):
             dry_run = True
         else:
-            block("Unsupported clean-session option. Use: /clean-session [--dry-run]")
+            block("Unsupported clean-session option. Use: clean-session [--dry-run]")
             return 0
 
     home = codex_home()

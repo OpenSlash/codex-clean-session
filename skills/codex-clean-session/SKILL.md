@@ -38,10 +38,10 @@ This avoids the loop where the skill needs the agent, but the agent cannot start
 If the Codex hook is installed and trusted, the user can also submit this directly in Codex:
 
 ```text
-/clean-session
+clean-session
 ```
 
-The hook runs before model submission and does not require the agent to start.
+The hook runs before model submission and does not require the agent to start. Do not prefix it with `/`; unknown slash commands are rejected by Codex before hooks can see them.
 
 ## Cleaning Multiple Sessions
 
