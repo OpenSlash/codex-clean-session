@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+"""Install the codex-clean-session UserPromptSubmit hook globally."""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+CODEX_DIR = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
+HOOKS_FILE = CODEX_DIR / "hooks.json"
+HOOK_COMMAND = str(ROOT / "bin" / "codex-clean-session-hook")
+
+
+def load_hooks() -> dict:
+    if not HOOKS_FILE.exists():
+        return {
+            "description": "User-global Codex hooks.",
+            "hooks": {},
+        }
+    with HOOKS_FILE.open("r", encoding="utf-8") as src:
+        data = json.load(src)
+    if not isinstance(data, dict):
+        raise SystemExit(f"{HOOKS_FILE} must contain a JSON object")
+    hooks = data.setdefault("hooks", {})
+    if not isinstance(hooks, dict):
+        raise SystemExit(f"{HOOKS_FILE} field 'hooks' must be a JSON object")
+    return data
+
+
+def has_hook(groups: list) -> bool:
+    for group in groups:
+        if not isinstance(group, dict):
+            continue
+        for hook in group.get("hooks", []):
+            if isinstance(hook, dict) and hook.get("command") == HOOK_COMMAND:
+                return True
+    return False
+
+
+def main() -> int:
+    CODEX_DIR.mkdir(parents=True, exist_ok=True)
+    data = load_hooks()
+    groups = data["hooks"].setdefault("UserPromptSubmit", [])
+    if not isinstance(groups, list):
+        raise SystemExit(f"{HOOKS_FILE} field hooks.UserPromptSubmit must be a list")
+
+    if not has_hook(groups):
+        groups.append(
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": HOOK_COMMAND,
+                        "statusMessage": "Checking clean-session command",
+                        "timeout": 30,
+                    }
+                ]
+            }
+        )
+
+    with HOOKS_FILE.open("w", encoding="utf-8") as dst:
+        json.dump(data, dst, indent=2)
+        dst.write("\n")
+
+    print(f"Installed Codex hook: {HOOKS_FILE}")
+    print(f"Hook command: {HOOK_COMMAND}")
+    print("Restart Codex, then run /hooks to review and trust the hook.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

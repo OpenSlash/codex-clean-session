@@ -47,6 +47,8 @@ After cleaning, restart Codex or reopen the session so the repaired transcript i
 
 ```text
 bin/codex-clean-session                # executable wrapper
+bin/codex-clean-session-hook           # Codex UserPromptSubmit hook handler
+bin/install-codex-hook                 # global Codex hook installer
 bin/install-codex-skill                # CLI and skill installer
 skills/codex-clean-session/SKILL.md    # optional Codex skill
 src/codex_clean_session.py             # source code
@@ -61,6 +63,13 @@ Clean the current Codex session from inside Codex:
 ```bash
 ./bin/codex-clean-session --current --dry-run
 ./bin/codex-clean-session --current
+```
+
+After installing the hook, clean the current session from the Codex prompt without invoking the agent:
+
+```text
+/clean-session --dry-run
+/clean-session
 ```
 
 Clean the most recently modified Codex session from an external terminal:
@@ -122,7 +131,7 @@ codex-clean-session --dry-run <session-id>
 
 ## Install the Codex Skill
 
-Install both the CLI command and the Codex skill with one command:
+Install the CLI command and the Codex skill with one command:
 
 ```bash
 ./bin/install-codex-skill
@@ -146,6 +155,29 @@ After installation, restart Codex so it can discover the new skill. In a Codex s
 codex-clean-session --current --dry-run
 ```
 
+## Install the Codex Hook
+
+Install the `UserPromptSubmit` hook:
+
+```bash
+./bin/install-codex-hook
+```
+
+The installer writes or updates:
+
+```text
+${CODEX_HOME:-~/.codex}/hooks.json
+```
+
+Restart Codex, run `/hooks`, and trust the installed hook. Then use:
+
+```text
+/clean-session --dry-run
+/clean-session
+```
+
+The hook runs before the prompt is sent to the model. It can clean the current transcript even when a broken session would prevent the agent or skill from running.
+
 ## Notes
 
 After cleaning a session, restart Codex or reopen/resume the session. A running Codex process may already have the old transcript loaded in memory.
@@ -155,5 +187,7 @@ If the error still appears after cleaning and restarting, the request may be cha
 `--current` works only inside Codex sessions that expose `CODEX_SESSION_ID` or `CODEX_THREAD_ID`.
 
 If Codex cannot process any request because the broken transcript fails before the agent can run tools, use `--last` from a separate terminal window. This avoids the skill/agent loop entirely.
+
+The hook command `/clean-session` is the best in-Codex escape hatch for that same failure mode because it runs before model submission. If the hook is not installed or trusted yet, use `codex-clean-session --last` externally.
 
 `--all` scans active transcript files under `${CODEX_HOME:-~/.codex}/sessions`. Date filters use the `YYYY/MM/DD` path in the Codex session directory, falling back to file modification time for manually supplied layouts.

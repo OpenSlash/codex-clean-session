@@ -35,6 +35,14 @@ codex-clean-session --last
 
 This avoids the loop where the skill needs the agent, but the agent cannot start because the transcript is invalid.
 
+If the Codex hook is installed and trusted, the user can also submit this directly in Codex:
+
+```text
+/clean-session
+```
+
+The hook runs before model submission and does not require the agent to start.
+
 ## Cleaning Multiple Sessions
 
 If the user asks to scan every session, run a dry run first:

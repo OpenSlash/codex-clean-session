@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+"""Codex UserPromptSubmit hook for transcript cleanup slash-style commands."""
+
+from __future__ import annotations
+
+import json
+import shlex
+import sys
+from pathlib import Path
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT / "src"))
+
+from codex_clean_session import (  # noqa: E402
+    DEFAULT_PATTERNS,
+    clean_file,
+    codex_home,
+    last_session_path,
+)
+
+
+COMMANDS = {"/clean-session", "/codex-clean-session", "/clean-codex-session"}
+
+
+def block(reason: str) -> None:
+    print(json.dumps({"decision": "block", "reason": reason}))
+
+
+def format_result(path: Path, result: dict, dry_run: bool) -> str:
+    lines = [
+        "Codex session cleanup complete." if not dry_run else "Codex session cleanup dry run complete.",
+        f"file={path}",
+        f"removed={result['removed']}",
+        f"removed_reasoning={result['reasoning']}",
+        f"removed_pattern_records={result['pattern']}",
+        f"invalid_json_lines={result['invalid_json']}",
+    ]
+    if dry_run:
+        lines.append("Run /clean-session to clean this transcript.")
+    else:
+        lines.append(f"backup={result['backup']}")
+        lines.append("Restart Codex or resume the session so the repaired transcript is loaded.")
+    return "\n".join(lines)
+
+
+def main() -> int:
+    try:
+        event = json.load(sys.stdin)
+    except json.JSONDecodeError:
+        return 0
+
+    if event.get("hook_event_name") != "UserPromptSubmit":
+        return 0
+
+    prompt = str(event.get("prompt") or "").strip()
+    try:
+        parts = shlex.split(prompt)
+    except ValueError as exc:
+        block(f"Invalid clean-session command: {exc}")
+        return 0
+
+    if not parts or parts[0] not in COMMANDS:
+        return 0
+
+    args = parts[1:]
+    if args in (["--help"], ["-h"]):
+        block("Usage: /clean-session [--dry-run]\nAliases: /codex-clean-session, /clean-codex-session")
+        return 0
+
+    dry_run = False
+    if args:
+        if args in (["--dry-run"], ["-n"]):
+            dry_run = True
+        else:
+            block("Unsupported clean-session option. Use: /clean-session [--dry-run]")
+            return 0
+
+    home = codex_home()
+    transcript = event.get("transcript_path")
+    path = Path(transcript).expanduser() if transcript else last_session_path(home)
+    result = clean_file(path, home, DEFAULT_PATTERNS, dry_run)
+    block(format_result(path, result, dry_run))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -6,6 +6,8 @@ This repository is a small Python CLI utility for cleaning Codex session transcr
 
 - `src/codex_clean_session.py` contains all application logic, including session lookup, filtering, backup creation, validation, and the CLI entry point.
 - `bin/codex-clean-session` is the executable wrapper that adds `src/` to `sys.path` and calls `main()`.
+- `bin/codex-clean-session-hook` is the Codex `UserPromptSubmit` hook handler for `/clean-session`.
+- `bin/install-codex-hook` installs the global hook in `${CODEX_HOME:-~/.codex}/hooks.json`.
 - `bin/install-codex-skill` installs the CLI symlink and Codex skill in one step.
 - `skills/codex-clean-session/SKILL.md` defines the optional Codex skill workflow.
 - `README.md` documents user-facing usage and installation.
@@ -23,6 +25,7 @@ No tests, assets, packaging metadata, or dependency manifests are currently comm
 - `python3 -m py_compile src/codex_clean_session.py bin/codex-clean-session` performs a quick syntax check.
 - `ln -sf "$PWD/bin/codex-clean-session" ~/.local/bin/codex-clean-session` installs the CLI locally, assuming `~/.local/bin` is on `PATH`.
 - `./bin/install-codex-skill` installs the CLI symlink and copies the skill to `${CODEX_HOME:-~/.codex}/skills/codex-clean-session`.
+- `./bin/install-codex-hook` installs the `/clean-session` prompt hook.
 
 There is no build step; the tool uses only the Python standard library.
 
@@ -41,7 +44,7 @@ python3 -m py_compile src/codex_clean_session.py bin/codex-clean-session
 ./bin/codex-clean-session --dry-run <sample-jsonl-path>
 ```
 
-When adding tests, place them under `tests/` and prefer `pytest`. Name files `test_*.py` and cover dry-run behavior, `--current`, `--last`, `--all` date filtering, backup creation, invalid JSONL handling, session matching, and pattern-based removals.
+When adding tests, place them under `tests/` and prefer `pytest`. Name files `test_*.py` and cover dry-run behavior, `--current`, `--last`, `--all` date filtering, hook prompt parsing, backup creation, invalid JSONL handling, session matching, and pattern-based removals.
 
 ## Commit & Pull Request Guidelines
 
