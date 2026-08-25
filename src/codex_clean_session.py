@@ -9,7 +9,7 @@ import json
 import os
 import shutil
 import tempfile
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 
@@ -56,6 +56,56 @@ def find_session(target: str, home: Path) -> Path:
         suffix = "\n  ..." if len(matches) > 20 else ""
         raise SystemExit(f"Multiple transcripts matched {target}:\n{lines}{suffix}")
     return matches[0]
+
+
+def active_session_paths(home: Path) -> list[Path]:
+    sessions_dir = home / "sessions"
+    if not sessions_dir.exists():
+        return []
+
+    paths: list[Path] = []
+    for path in sessions_dir.rglob("*.jsonl"):
+        name = path.name
+        if ".bak-" in name or ".scrub-bak-" in name:
+            continue
+        paths.append(path)
+    return sorted(paths)
+
+
+def parse_date(value: str) -> date:
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"invalid date {value!r}; expected YYYY-MM-DD")
+
+
+def session_date(path: Path, home: Path) -> date:
+    try:
+        rel = path.relative_to(home / "sessions")
+        year, month, day = rel.parts[:3]
+        return date(int(year), int(month), int(day))
+    except (ValueError, IndexError):
+        return datetime.fromtimestamp(path.stat().st_mtime).date()
+
+
+def filter_paths_by_date(
+    paths: list[Path],
+    home: Path,
+    selected_dates: set[date],
+    from_date: date | None,
+    to_date: date | None,
+) -> list[Path]:
+    selected: list[Path] = []
+    for path in paths:
+        day = session_date(path, home)
+        if selected_dates and day not in selected_dates:
+            continue
+        if from_date and day < from_date:
+            continue
+        if to_date and day > to_date:
+            continue
+        selected.append(path)
+    return selected
 
 
 def record_text(record: object) -> str:
@@ -148,7 +198,7 @@ def clean_file(path: Path, home: Path, patterns: tuple[str, ...], dry_run: bool)
                 if dst:
                     dst.close()
 
-        if not dry_run:
+        if not dry_run and counts["removed"]:
             shutil.copy2(path, backup)
             os.replace(tmp_name, path)
             tmp_name = None
@@ -163,8 +213,48 @@ def clean_file(path: Path, home: Path, patterns: tuple[str, ...], dry_run: bool)
     counts["remaining_reasoning"] = count_remaining(path, patterns, mode="reasoning") if not dry_run else -1
     counts["remaining_patterns"] = count_remaining(path, patterns, mode="patterns") if not dry_run else -1
     counts["valid_jsonl"] = validate_jsonl(path) if not dry_run else True
-    counts["backup"] = str(backup) if not dry_run else ""
+    counts["backup"] = str(backup) if not dry_run and counts["removed"] else ""
     return counts
+
+
+def combine_counts(results: list[dict]) -> dict[str, int]:
+    keys = (
+        "total",
+        "kept",
+        "removed",
+        "invalid_json",
+        "reasoning",
+        "pattern",
+        "remaining_reasoning",
+        "remaining_patterns",
+    )
+    summary = {key: 0 for key in keys}
+    for result in results:
+        for key in keys:
+            value = result.get(key, 0)
+            if isinstance(value, int) and value >= 0:
+                summary[key] += value
+    return summary
+
+
+def print_result(path: Path, result: dict, dry_run: bool) -> None:
+    print(f"file={path}")
+    if dry_run:
+        print("mode=dry-run")
+    elif result["backup"]:
+        print(f"backup={result['backup']}")
+    else:
+        print("backup=")
+    print(f"total={result['total']}")
+    print(f"kept={result['kept']}")
+    print(f"removed={result['removed']}")
+    print(f"removed_reasoning={result['reasoning']}")
+    print(f"removed_pattern_records={result['pattern']}")
+    print(f"invalid_json_lines={result['invalid_json']}")
+    if not dry_run:
+        print(f"remaining_reasoning={result['remaining_reasoning']}")
+        print(f"remaining_pattern_records={result['remaining_patterns']}")
+        print(f"valid_jsonl={'ok' if result['valid_jsonl'] else 'bad'}")
 
 
 def count_remaining(path: Path, patterns: tuple[str, ...], mode: str) -> int:
@@ -210,6 +300,30 @@ def main() -> int:
         action="store_true",
         help="Clean the current Codex session using CODEX_SESSION_ID or CODEX_THREAD_ID",
     )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Scan and clean all active Codex session transcripts",
+    )
+    parser.add_argument(
+        "--date",
+        action="append",
+        type=parse_date,
+        default=[],
+        help="Limit --all to one date in YYYY-MM-DD format. Can be repeated.",
+    )
+    parser.add_argument(
+        "--from",
+        dest="from_date",
+        type=parse_date,
+        help="Limit --all to sessions on or after YYYY-MM-DD",
+    )
+    parser.add_argument(
+        "--to",
+        dest="to_date",
+        type=parse_date,
+        help="Limit --all to sessions on or before YYYY-MM-DD",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Report what would be removed without editing")
     parser.add_argument(
         "--pattern",
@@ -219,31 +333,48 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    if args.current and args.target:
-        parser.error("target cannot be used with --current")
-    if not args.current and not args.target:
-        parser.error("target is required unless --current is used")
+    modes = [bool(args.target), args.current, args.all]
+    if sum(modes) != 1:
+        parser.error("choose exactly one of target, --current, or --all")
+    if (args.date or args.from_date or args.to_date) and not args.all:
+        parser.error("--date, --from, and --to can only be used with --all")
+    if args.from_date and args.to_date and args.from_date > args.to_date:
+        parser.error("--from cannot be later than --to")
 
     home = codex_home()
-    target = current_session_id() if args.current else args.target
-    path = find_session(target, home)
     patterns = DEFAULT_PATTERNS + tuple(args.pattern)
 
-    result = clean_file(path, home, patterns, args.dry_run)
+    if args.all:
+        paths = filter_paths_by_date(
+            active_session_paths(home),
+            home,
+            set(args.date),
+            args.from_date,
+            args.to_date,
+        )
+        results = []
+        for path in paths:
+            result = clean_file(path, home, patterns, args.dry_run)
+            results.append(result)
+            if result["removed"] or result["invalid_json"]:
+                print_result(path, result, args.dry_run)
+                print()
 
-    print(f"file={path}")
-    if args.dry_run:
-        print("mode=dry-run")
-    else:
-        print(f"backup={result['backup']}")
-    print(f"total={result['total']}")
-    print(f"kept={result['kept']}")
-    print(f"removed={result['removed']}")
-    print(f"removed_reasoning={result['reasoning']}")
-    print(f"removed_pattern_records={result['pattern']}")
-    print(f"invalid_json_lines={result['invalid_json']}")
-    if not args.dry_run:
-        print(f"remaining_reasoning={result['remaining_reasoning']}")
-        print(f"remaining_pattern_records={result['remaining_patterns']}")
-        print(f"valid_jsonl={'ok' if result['valid_jsonl'] else 'bad'}")
+        summary = combine_counts(results)
+        print(f"files_scanned={len(paths)}")
+        print(f"total={summary['total']}")
+        print(f"kept={summary['kept']}")
+        print(f"removed={summary['removed']}")
+        print(f"removed_reasoning={summary['reasoning']}")
+        print(f"removed_pattern_records={summary['pattern']}")
+        print(f"invalid_json_lines={summary['invalid_json']}")
+        if not args.dry_run:
+            print(f"remaining_reasoning={summary['remaining_reasoning']}")
+            print(f"remaining_pattern_records={summary['remaining_patterns']}")
+        return 0
+
+    target = current_session_id() if args.current else args.target
+    path = find_session(target, home)
+    result = clean_file(path, home, patterns, args.dry_run)
+    print_result(path, result, args.dry_run)
     return 0

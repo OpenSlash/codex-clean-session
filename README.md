@@ -46,8 +46,10 @@ After cleaning, restart Codex or reopen the session so the repaired transcript i
 ## Project Structure
 
 ```text
-bin/codex-clean-session      # executable wrapper
-src/codex_clean_session.py   # source code
+bin/codex-clean-session                # executable wrapper
+bin/install-codex-skill                # CLI and skill installer
+skills/codex-clean-session/SKILL.md    # optional Codex skill
+src/codex_clean_session.py             # source code
 README.md
 LICENSE
 ```
@@ -59,6 +61,20 @@ Clean the current Codex session from inside Codex:
 ```bash
 ./bin/codex-clean-session --current --dry-run
 ./bin/codex-clean-session --current
+```
+
+Scan all Codex sessions:
+
+```bash
+./bin/codex-clean-session --all --dry-run
+./bin/codex-clean-session --all
+```
+
+Limit a full scan by session date:
+
+```bash
+./bin/codex-clean-session --all --date 2026-08-25 --dry-run
+./bin/codex-clean-session --all --from 2026-08-01 --to 2026-08-25 --dry-run
 ```
 
 Preview a cleanup:
@@ -130,3 +146,5 @@ After cleaning a session, restart Codex or reopen/resume the session. A running 
 If the error still appears after cleaning and restarting, the request may be chained through a server-side `previous_response_id`. In that case, start a new session and carry over only visible context.
 
 `--current` works only inside Codex sessions that expose `CODEX_SESSION_ID` or `CODEX_THREAD_ID`.
+
+`--all` scans active transcript files under `${CODEX_HOME:-~/.codex}/sessions`. Date filters use the `YYYY/MM/DD` path in the Codex session directory, falling back to file modification time for manually supplied layouts.
