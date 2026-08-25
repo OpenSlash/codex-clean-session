@@ -25,6 +25,7 @@ DEFAULT_PATTERNS = (
 ROLLOUT_TIME_RE = re.compile(
     r"rollout-(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})"
 )
+CWD_TAG_RE = re.compile(r"<cwd>(.*?)</cwd>")
 
 
 def current_session_id() -> str:
@@ -98,6 +99,53 @@ def last_session_path(home: Path, *, by_modified_time: bool = False) -> Path:
     if by_modified_time:
         return max(paths, key=lambda path: path.stat().st_mtime)
     return max(paths, key=lambda path: session_sort_time(path, home))
+
+
+def normalize_path(path: str | Path) -> Path:
+    return Path(path).expanduser().resolve(strict=False)
+
+
+def text_cwds(value: str) -> list[Path]:
+    return [normalize_path(match) for match in CWD_TAG_RE.findall(value)]
+
+
+def record_cwds(record: dict) -> list[Path]:
+    payload = record.get("payload")
+    cwds: list[Path] = []
+    if isinstance(payload, dict) and isinstance(payload.get("cwd"), str):
+        cwds.append(normalize_path(payload["cwd"]))
+
+    if isinstance(payload, dict):
+        content = payload.get("content")
+        if isinstance(content, list):
+            for item in content:
+                if isinstance(item, dict) and isinstance(item.get("text"), str):
+                    cwds.extend(text_cwds(item["text"]))
+    return cwds
+
+
+def session_matches_project(path: Path, project: Path) -> bool:
+    try:
+        with path.open("r", encoding="utf-8") as src:
+            for index, raw in enumerate(src):
+                if index >= 200:
+                    return False
+                try:
+                    record = json.loads(raw)
+                except json.JSONDecodeError:
+                    continue
+                if any(cwd == project for cwd in record_cwds(record)):
+                    return True
+    except OSError:
+        return False
+    return False
+
+
+def newest_project_session_path(home: Path, project: Path) -> Path:
+    matches = [path for path in active_session_paths(home) if session_matches_project(path, project)]
+    if not matches:
+        raise SystemExit(f"No active Codex session transcripts found for project: {project}")
+    return max(matches, key=lambda path: session_sort_time(path, home))
 
 
 def parse_date(value: str) -> date:
@@ -347,6 +395,13 @@ def main() -> int:
         help="Clean the most recently modified Codex session transcript",
     )
     parser.add_argument(
+        "--project",
+        nargs="?",
+        const=".",
+        metavar="DIR",
+        help="Clean the newest session whose transcript cwd matches DIR, defaulting to the current directory",
+    )
+    parser.add_argument(
         "--all",
         action="store_true",
         help="Scan and clean all active Codex session transcripts",
@@ -374,7 +429,7 @@ def main() -> int:
     parser.add_argument(
         "--yes",
         action="store_true",
-        help="Confirm cleanup for heuristic or bulk targets such as --last, --last-modified, or --all",
+        help="Confirm cleanup for heuristic or bulk targets such as --last, --last-modified, --project, or --all",
     )
     parser.add_argument(
         "--pattern",
@@ -384,9 +439,9 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    modes = [bool(args.target), args.current, args.last, args.last_modified, args.all]
+    modes = [bool(args.target), args.current, args.last, args.last_modified, args.project is not None, args.all]
     if sum(modes) != 1:
-        parser.error("choose exactly one of target, --current, --last, --last-modified, or --all")
+        parser.error("choose exactly one of target, --current, --last, --last-modified, --project, or --all")
     if (args.date or args.from_date or args.to_date) and not args.all:
         parser.error("--date, --from, and --to can only be used with --all")
     if args.from_date and args.to_date and args.from_date > args.to_date:
@@ -432,6 +487,12 @@ def main() -> int:
         path = last_session_path(home, by_modified_time=args.last_modified)
         if not args.dry_run and not args.yes:
             print_selection(path, home, "--last-modified" if args.last_modified else "--last")
+            return 0
+    elif args.project is not None:
+        project = normalize_path(args.project)
+        path = newest_project_session_path(home, project)
+        if not args.dry_run and not args.yes:
+            print_selection(path, home, f"--project {project}")
             return 0
     else:
         target = current_session_id() if args.current else args.target

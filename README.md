@@ -79,6 +79,19 @@ codex-clean-session --last --dry-run
 codex-clean-session --last --yes
 ```
 
+Clean the newest Codex session for the current project directory:
+
+```bash
+codex-clean-session --project --dry-run
+codex-clean-session --project --yes
+```
+
+Or specify a project path:
+
+```bash
+codex-clean-session --project /path/to/project --dry-run
+```
+
 Scan all Codex sessions:
 
 ```bash
@@ -192,7 +205,9 @@ The hook command `clean-session` is the best in-Codex escape hatch for that same
 
 `--last` scans global Codex transcripts under `${CODEX_HOME:-~/.codex}/sessions`; it is not limited to the current project directory. It chooses the newest session by the rollout timestamp in the transcript filename. Use `--last-modified` only if you explicitly want the file with the newest filesystem modification time.
 
-For safety, `--last`, `--last-modified`, and `--all` do not clean unless you add `--yes`. Running `codex-clean-session --last` without `--dry-run` or `--yes` only prints the selected file.
+For safety, `--last`, `--last-modified`, `--project`, and `--all` do not clean unless you add `--yes`. Running `codex-clean-session --last` or `codex-clean-session --project` without `--dry-run` or `--yes` only prints the selected file.
+
+`--project` scans early transcript metadata for recorded working directories, including `session_meta.payload.cwd`, `turn_context.payload.cwd`, and early `<environment_context><cwd>...</cwd>` text. It requires an exact normalized cwd match and chooses the newest matching session by rollout timestamp.
 
 If Codex prints `To continue this session, run codex resume <session-id>`, the most precise cleanup command is:
 

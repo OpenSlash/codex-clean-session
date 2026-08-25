@@ -35,6 +35,13 @@ codex-clean-session --last --yes
 
 This avoids the loop where the skill needs the agent, but the agent cannot start because the transcript is invalid. If Codex prints a resume command with a session id, prefer `codex-clean-session <session-id>` because it is exact.
 
+If the user wants to find the session associated with the current repository directory, use:
+
+```bash
+codex-clean-session --project --dry-run
+codex-clean-session --project --yes
+```
+
 If the Codex hook is installed and trusted, the user can also submit this directly in Codex:
 
 ```text

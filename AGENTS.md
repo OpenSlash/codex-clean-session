@@ -21,6 +21,7 @@ No tests, assets, packaging metadata, or dependency manifests are currently comm
 - `./bin/codex-clean-session --current --dry-run` previews cleanup for the current Codex session using `CODEX_SESSION_ID` or `CODEX_THREAD_ID`.
 - `./bin/codex-clean-session --last --dry-run` previews cleanup for the newest session by rollout timestamp without requiring Codex to run.
 - `./bin/codex-clean-session --last-modified --dry-run` previews cleanup for the most recently modified transcript.
+- `./bin/codex-clean-session --project --dry-run` previews cleanup for the newest session whose transcript cwd matches the current directory.
 - `./bin/codex-clean-session --all --from 2026-08-01 --to 2026-08-25 --dry-run` scans all sessions in a date range.
 - `./bin/codex-clean-session --last --yes` confirms cleanup for a heuristic target after previewing.
 - `./bin/codex-clean-session <session-id-or-path>` cleans a matching transcript and writes a backup under `~/.codex/session-cleanup-backups/`.
@@ -46,7 +47,7 @@ python3 -m py_compile src/codex_clean_session.py bin/codex-clean-session
 ./bin/codex-clean-session --dry-run <sample-jsonl-path>
 ```
 
-When adding tests, place them under `tests/` and prefer `pytest`. Name files `test_*.py` and cover dry-run behavior, `--current`, `--last`, `--last-modified`, `--all` date filtering, hook prompt parsing, backup creation, invalid JSONL handling, session matching, and pattern-based removals.
+When adding tests, place them under `tests/` and prefer `pytest`. Name files `test_*.py` and cover dry-run behavior, `--current`, `--last`, `--last-modified`, `--project` cwd matching, `--all` date filtering, hook prompt parsing, backup creation, invalid JSONL handling, session matching, and pattern-based removals.
 
 ## Commit & Pull Request Guidelines
 
