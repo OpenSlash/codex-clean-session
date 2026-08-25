@@ -30,7 +30,7 @@ If the user is already seeing `thinking_signature_invalid` before the agent can 
 
 ```bash
 codex-clean-session --last --dry-run
-codex-clean-session --last
+codex-clean-session --last --yes
 ```
 
 This avoids the loop where the skill needs the agent, but the agent cannot start because the transcript is invalid. If Codex prints a resume command with a session id, prefer `codex-clean-session <session-id>` because it is exact.

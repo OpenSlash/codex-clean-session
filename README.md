@@ -76,14 +76,14 @@ Clean the newest Codex session from an external terminal:
 
 ```bash
 codex-clean-session --last --dry-run
-codex-clean-session --last
+codex-clean-session --last --yes
 ```
 
 Scan all Codex sessions:
 
 ```bash
 ./bin/codex-clean-session --all --dry-run
-./bin/codex-clean-session --all
+./bin/codex-clean-session --all --yes
 ```
 
 Limit a full scan by session date:
@@ -191,6 +191,8 @@ If Codex cannot process any request because the broken transcript fails before t
 The hook command `clean-session` is the best in-Codex escape hatch for that same failure mode because it runs before model submission. If the hook is not installed or trusted yet, use `codex-clean-session --last` externally.
 
 `--last` scans global Codex transcripts under `${CODEX_HOME:-~/.codex}/sessions`; it is not limited to the current project directory. It chooses the newest session by the rollout timestamp in the transcript filename. Use `--last-modified` only if you explicitly want the file with the newest filesystem modification time.
+
+For safety, `--last`, `--last-modified`, and `--all` do not clean unless you add `--yes`. Running `codex-clean-session --last` without `--dry-run` or `--yes` only prints the selected file.
 
 If Codex prints `To continue this session, run codex resume <session-id>`, the most precise cleanup command is:
 

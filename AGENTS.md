@@ -22,6 +22,7 @@ No tests, assets, packaging metadata, or dependency manifests are currently comm
 - `./bin/codex-clean-session --last --dry-run` previews cleanup for the newest session by rollout timestamp without requiring Codex to run.
 - `./bin/codex-clean-session --last-modified --dry-run` previews cleanup for the most recently modified transcript.
 - `./bin/codex-clean-session --all --from 2026-08-01 --to 2026-08-25 --dry-run` scans all sessions in a date range.
+- `./bin/codex-clean-session --last --yes` confirms cleanup for a heuristic target after previewing.
 - `./bin/codex-clean-session <session-id-or-path>` cleans a matching transcript and writes a backup under `~/.codex/session-cleanup-backups/`.
 - `python3 -m py_compile src/codex_clean_session.py bin/codex-clean-session` performs a quick syntax check.
 - `ln -sf "$PWD/bin/codex-clean-session" ~/.local/bin/codex-clean-session` installs the CLI locally, assuming `~/.local/bin` is on `PATH`.

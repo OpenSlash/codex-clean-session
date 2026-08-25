@@ -285,6 +285,14 @@ def print_result(path: Path, result: dict, dry_run: bool) -> None:
         print(f"valid_jsonl={'ok' if result['valid_jsonl'] else 'bad'}")
 
 
+def print_selection(path: Path, home: Path, mode: str) -> None:
+    print(f"selected_mode={mode}")
+    print(f"selected_file={path}")
+    print(f"session_time={session_sort_time(path, home).isoformat(sep=' ')}")
+    print("mode=confirmation-required")
+    print("Run with --dry-run to preview removals, then run again with --yes to clean.")
+
+
 def count_remaining(path: Path, patterns: tuple[str, ...], mode: str) -> int:
     total = 0
     with path.open("r", encoding="utf-8") as src:
@@ -364,6 +372,11 @@ def main() -> int:
     )
     parser.add_argument("--dry-run", action="store_true", help="Report what would be removed without editing")
     parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="Confirm cleanup for heuristic or bulk targets such as --last, --last-modified, or --all",
+    )
+    parser.add_argument(
         "--pattern",
         action="append",
         default=[],
@@ -378,11 +391,15 @@ def main() -> int:
         parser.error("--date, --from, and --to can only be used with --all")
     if args.from_date and args.to_date and args.from_date > args.to_date:
         parser.error("--from cannot be later than --to")
+    if args.yes and args.dry_run:
+        parser.error("--yes cannot be used with --dry-run")
 
     home = codex_home()
     patterns = DEFAULT_PATTERNS + tuple(args.pattern)
 
     if args.all:
+        if not args.dry_run and not args.yes:
+            parser.error("--all cleanup requires --yes; run --all --dry-run first")
         paths = filter_paths_by_date(
             active_session_paths(home),
             home,
@@ -413,6 +430,9 @@ def main() -> int:
 
     if args.last or args.last_modified:
         path = last_session_path(home, by_modified_time=args.last_modified)
+        if not args.dry_run and not args.yes:
+            print_selection(path, home, "--last-modified" if args.last_modified else "--last")
+            return 0
     else:
         target = current_session_id() if args.current else args.target
         path = find_session(target, home)
