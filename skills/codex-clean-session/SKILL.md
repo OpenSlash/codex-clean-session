@@ -1,3 +1,7 @@
+---
+name: codex-clean-session
+description: "Clean, repair, or recover current or multiple Codex session transcripts after thinking_signature_invalid, invalid_encrypted_content, encrypted_content, litellm_enc, or resume failures."
+---
 # codex-clean-session
 
 Use this skill when the user asks to clean, repair, or recover the current Codex session or multiple Codex sessions after errors such as `thinking_signature_invalid`, `invalid_encrypted_content`, `encrypted_content`, `litellm_enc`, or Codex session resume failures.
