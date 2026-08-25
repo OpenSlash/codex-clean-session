@@ -54,6 +54,13 @@ LICENSE
 
 ## Usage
 
+Clean the current Codex session from inside Codex:
+
+```bash
+./bin/codex-clean-session --current --dry-run
+./bin/codex-clean-session --current
+```
+
 Preview a cleanup:
 
 ```bash
@@ -90,8 +97,36 @@ Then run:
 codex-clean-session --dry-run <session-id>
 ```
 
+## Install the Codex Skill
+
+Install both the CLI command and the Codex skill with one command:
+
+```bash
+./bin/install-codex-skill
+```
+
+The installer copies the skill to:
+
+```text
+${CODEX_HOME:-~/.codex}/skills/codex-clean-session/SKILL.md
+```
+
+It also links the CLI to:
+
+```text
+~/.local/bin/codex-clean-session
+```
+
+After installation, restart Codex so it can discover the new skill. In a Codex session, ask it to clean the current session. The skill will run:
+
+```bash
+codex-clean-session --current --dry-run
+```
+
 ## Notes
 
 After cleaning a session, restart Codex or reopen/resume the session. A running Codex process may already have the old transcript loaded in memory.
 
 If the error still appears after cleaning and restarting, the request may be chained through a server-side `previous_response_id`. In that case, start a new session and carry over only visible context.
+
+`--current` works only inside Codex sessions that expose `CODEX_SESSION_ID` or `CODEX_THREAD_ID`.

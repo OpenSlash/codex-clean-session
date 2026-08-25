@@ -1,0 +1,15 @@
+#!/usr/bin/env sh
+set -eu
+
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+CODEX_DIR=${CODEX_HOME:-"$HOME/.codex"}
+SKILL_DIR="$CODEX_DIR/skills/codex-clean-session"
+LOCAL_BIN="$HOME/.local/bin"
+
+mkdir -p "$SKILL_DIR" "$LOCAL_BIN"
+cp "$ROOT/skills/codex-clean-session/SKILL.md" "$SKILL_DIR/SKILL.md"
+ln -sf "$ROOT/bin/codex-clean-session" "$LOCAL_BIN/codex-clean-session"
+
+printf 'Installed Codex skill: %s\n' "$SKILL_DIR"
+printf 'Installed CLI command: %s\n' "$LOCAL_BIN/codex-clean-session"
+printf 'If needed, add %s to PATH.\n' "$LOCAL_BIN"

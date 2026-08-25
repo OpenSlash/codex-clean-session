@@ -6,6 +6,8 @@ This repository is a small Python CLI utility for cleaning Codex session transcr
 
 - `src/codex_clean_session.py` contains all application logic, including session lookup, filtering, backup creation, validation, and the CLI entry point.
 - `bin/codex-clean-session` is the executable wrapper that adds `src/` to `sys.path` and calls `main()`.
+- `bin/install-codex-skill` installs the CLI symlink and Codex skill in one step.
+- `skills/codex-clean-session/SKILL.md` defines the optional Codex skill workflow.
 - `README.md` documents user-facing usage and installation.
 - `LICENSE` contains the project license.
 
@@ -14,9 +16,11 @@ No tests, assets, packaging metadata, or dependency manifests are currently comm
 ## Build, Test, and Development Commands
 
 - `./bin/codex-clean-session --dry-run <session-id-or-path>` previews cleanup without editing a transcript.
+- `./bin/codex-clean-session --current --dry-run` previews cleanup for the current Codex session using `CODEX_SESSION_ID` or `CODEX_THREAD_ID`.
 - `./bin/codex-clean-session <session-id-or-path>` cleans a matching transcript and writes a backup under `~/.codex/session-cleanup-backups/`.
 - `python3 -m py_compile src/codex_clean_session.py bin/codex-clean-session` performs a quick syntax check.
 - `ln -sf "$PWD/bin/codex-clean-session" ~/.local/bin/codex-clean-session` installs the CLI locally, assuming `~/.local/bin` is on `PATH`.
+- `./bin/install-codex-skill` installs the CLI symlink and copies the skill to `${CODEX_HOME:-~/.codex}/skills/codex-clean-session`.
 
 There is no build step; the tool uses only the Python standard library.
 
@@ -35,7 +39,7 @@ python3 -m py_compile src/codex_clean_session.py bin/codex-clean-session
 ./bin/codex-clean-session --dry-run <sample-jsonl-path>
 ```
 
-When adding tests, place them under `tests/` and prefer `pytest`. Name files `test_*.py` and cover dry-run behavior, backup creation, invalid JSONL handling, session matching, and pattern-based removals.
+When adding tests, place them under `tests/` and prefer `pytest`. Name files `test_*.py` and cover dry-run behavior, `--current`, backup creation, invalid JSONL handling, session matching, and pattern-based removals.
 
 ## Commit & Pull Request Guidelines
 

@@ -22,6 +22,14 @@ DEFAULT_PATTERNS = (
 )
 
 
+def current_session_id() -> str:
+    for name in ("CODEX_SESSION_ID", "CODEX_THREAD_ID"):
+        value = os.environ.get(name)
+        if value:
+            return value
+    raise SystemExit("--current requires CODEX_SESSION_ID or CODEX_THREAD_ID in the environment")
+
+
 def codex_home() -> Path:
     return Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
 
@@ -196,7 +204,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Clean invalid encrypted reasoning data from a Codex session transcript.",
     )
-    parser.add_argument("target", help="Session id substring or .jsonl transcript path")
+    parser.add_argument("target", nargs="?", help="Session id substring or .jsonl transcript path")
+    parser.add_argument(
+        "--current",
+        action="store_true",
+        help="Clean the current Codex session using CODEX_SESSION_ID or CODEX_THREAD_ID",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Report what would be removed without editing")
     parser.add_argument(
         "--pattern",
@@ -206,8 +219,14 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    if args.current and args.target:
+        parser.error("target cannot be used with --current")
+    if not args.current and not args.target:
+        parser.error("target is required unless --current is used")
+
     home = codex_home()
-    path = find_session(args.target, home)
+    target = current_session_id() if args.current else args.target
+    path = find_session(target, home)
     patterns = DEFAULT_PATTERNS + tuple(args.pattern)
 
     result = clean_file(path, home, patterns, args.dry_run)
